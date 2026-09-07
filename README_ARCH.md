@@ -7,59 +7,59 @@
 # Türkçe Sürüm
 
 ## Proje Amacı
-Bu depo, şehir içi ulaşım için rota hesaplama ve durak/hat verilerini yöneten bir Java uygulaması olduğunu gösteriyor; kanıt: RotaHesaplama, DijkstraSolver, çeşitli RouteStrategy* sınıfları ve src/main/resources/data.json dosyası.
+Bu depo, şehir içi ulaşım rotalarını hesaplamaya yönelik Java tabanlı bir uygulama içeriyor; dosya isimleri ve sınıf yapısı (ör. DijkstraSolver, BusRouteStrategy, TramRouteStrategy, GraphBuilderService, data.json) rota hesaplama ve toplu taşıma odaklıdır.
 
 ## Teknik Yığın
-- **Dil**: Java (src/main/java/*.java dosya uzantıları)
-- **Framework**: Belirlenemiyor (pom.xml proje kökünde mevcut; içerik/dependencies sağlanmadı)
-- **Temel Bağımlılıklar**: Sağlanan kanıt dosyalarında bağımlılık listesi yok (pom.xml mevcut fakat içeriği sağlanmadı)
-- **Altyapı**: (ilgili konfigürasyon dosyası yok — bu satır atlandı)
+- **Dil**: Java (dosya uzantıları .java ve proje kökünde pom.xml var)
+- **Framework**: Belirlenemiyor — dependency içeriği pom.xml dosya içeriği sağlanmadığından framework bilgisi çıkartılamadı
+- **Temel Bağımlılıklar**: pom.xml içeriği sağlanmadığından listelenemiyor
+- **Altyapı**: (ilgili konfigürasyon dosyası yok)
 
 ## Mimari Plan
 
 ```mermaid
 flowchart TD
-  subgraph Frontend
-    FE["Static UI index.html"]
-    FE_IMG1["bus.png"]
-    FE_IMG2["tram.png"]
-    FE_IMG3["ikon.png"]
-  end
-  subgraph Backend
-    BE1["HomeController"]
-    BE2["StopController"]
-    BE3["RotaHesaplama"]
-    BE4["DijkstraSolver"]
-    BE5["CityDataRepository"]
-    BE6["GraphBuilderService"]
-    BE7["ManualGraph"]
-    BE8["RouteStrategy"]
-  end
-  subgraph Data
-    DB1[("data.json")]
-  end
-  FE --> BE1
-  BE1 --> BE3
-  BE3 --> BE4
-  BE4 --> BE5
-  BE6 --> DB1
-  BE7 --> BE6
-  BE8 --> BE3
-
-  end
-  style FE fill:#1f6feb,stroke:#58a6ff,color:#fff
-  style FE_IMG1 fill:#1f6feb,stroke:#58a6ff,color:#fff
-  style FE_IMG2 fill:#1f6feb,stroke:#58a6ff,color:#fff
-  style FE_IMG3 fill:#1f6feb,stroke:#58a6ff,color:#fff
-  style BE1 fill:#238636,stroke:#3fb950,color:#fff
-  style BE2 fill:#238636,stroke:#3fb950,color:#fff
-  style BE3 fill:#238636,stroke:#3fb950,color:#fff
-  style BE4 fill:#238636,stroke:#3fb950,color:#fff
-  style BE5 fill:#238636,stroke:#3fb950,color:#fff
-  style BE6 fill:#238636,stroke:#3fb950,color:#fff
-  style BE7 fill:#238636,stroke:#3fb950,color:#fff
-  style BE8 fill:#238636,stroke:#3fb950,color:#fff
-  style DB1 fill:#da3633,stroke:#f85149,color:#fff
+subgraph BACKEND ["Backend"]
+APP["App"]
+HOME["HomeController"]
+STOP["StopController"]
+GRAPH["GraphBuilderService"]
+DIJK["DijkstraSolver"]
+STRATBUS["BusRouteStrategy"]
+STRATTRAM["TramRouteStrategy"]
+STRATTAXI["TaxiRouteStrategy"]
+STRATOTHER["ShortestRouteStrategy / FastestRouteStrategy / CheapestRouteStrategy"]
+end
+subgraph DATA ["Data"]
+DATA[("data.json")]
+end
+subgraph FRONTEND ["Frontend"]
+INDEX["index.html"]
+BUSIMG["bus.png"]
+TRAMIMG["tram.png"]
+ICON["ikon.png"]
+end
+INDEX --> HOME
+HOME --> GRAPH
+GRAPH --> DIJK
+DIJK --> STRATBUS
+DIJK --> STRATTRAM
+DIJK --> STRATTAXI
+GRAPH --> DATA
+style INDEX fill:#1f6feb,stroke:#58a6ff,color:#fff
+style BUSIMG fill:#1f6feb,stroke:#58a6ff,color:#fff
+style TRAMIMG fill:#1f6feb,stroke:#58a6ff,color:#fff
+style ICON fill:#1f6feb,stroke:#58a6ff,color:#fff
+style APP fill:#238636,stroke:#3fb950,color:#fff
+style HOME fill:#238636,stroke:#3fb950,color:#fff
+style STOP fill:#238636,stroke:#3fb950,color:#fff
+style GRAPH fill:#238636,stroke:#3fb950,color:#fff
+style DIJK fill:#238636,stroke:#3fb950,color:#fff
+style STRATBUS fill:#238636,stroke:#3fb950,color:#fff
+style STRATTRAM fill:#238636,stroke:#3fb950,color:#fff
+style STRATTAXI fill:#238636,stroke:#3fb950,color:#fff
+style STRATOTHER fill:#238636,stroke:#3fb950,color:#fff
+style DATA fill:#da3633,stroke:#f85149,color:#fff
 
 ```
 
@@ -67,63 +67,64 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-  participant User
-  participant HomeController
-  participant StopController
-  participant RotaHesaplama
-  participant DijkstraSolver
-  participant CityDataRepository
-
-  User->>HomeController: "GET /" (index.html veya ana istek)
-  HomeController->>RotaHesaplama: "rota hesaplama isteği" (kullanıcı parametreleri)
-  RotaHesaplama->>DijkstraSolver: "en kısa/ucuz/hızlı rota hesapla" (RouteStrategy kullanımı)
-  DijkstraSolver->>CityDataRepository: "durak/kenar verisi al"
-  CityDataRepository-->>DijkstraSolver: "veri (src/main/resources/data.json)"
-  DijkstraSolver-->>RotaHesaplama: "hesaplanan rota"
-  RotaHesaplama-->>HomeController: "rota sonucu"
-  HomeController-->>User: "rota yanıtı / render"
+participant User
+participant Browser
+participant HomeController
+participant GraphBuilderService
+participant DijkstraSolver
+User->>Browser: index.html açar (src/main/resources/static/index.html)
+Browser->>HomeController: rota isteği gönderir (src/main/java/com/example/HomeController.java)
+HomeController->>GraphBuilderService: grafik/rota oluşturma talebi (src/main/java/com/example/GraphBuilderService.java)
+GraphBuilderService->>DijkstraSolver: en kısa/en hızlı hesaplama isteği (src/main/java/com/example/DijkstraSolver.java)
+DijkstraSolver-->>GraphBuilderService: hesaplanan rota
+GraphBuilderService-->>HomeController: rota sonucu
+HomeController-->>Browser: sonuç döner
 
 ```
 
 ## Kanıta Dayalı Riskler
-1. Tüm sınıfların tek paket altında toplanması: src/main/java/com/example/ içinde çok sayıda sınıf bulunuyor (ör. HomeController, RotaHesaplama, DijkstraSolver, RouteStrategy ve birçok strateji impl.) — bu, modülerlik ve sorumluluk ayrımını zorlaştırabilir.
-2. Test kapsamının sınırlı olduğuna dair kanıt: tek bir test dosyası mevcut (src/test/java/com/example/AppTest.java) — kapsamın yetersiz olma ihtimali var.
-3. Uygulama verisinin kaynak kod içinde tek bir JSON dosyasında tutulması: src/main/resources/data.json — sabitlenmiş/harici verinin doğrudan paketlenmesi operasyonel veya gizlilik riski oluşturabilir.
+1. Uygulamada HomeController ve StopController sınıfları var ancak depo içinde kimlik doğrulama/yetkilendirme ile ilgili sınıf veya konfigürasyon görünmüyor — (src/main/java/com/example/HomeController.java, src/main/java/com/example/StopController.java).
+2. Test kapsamı zayıf: sadece tek bir test sınıfı var (src/test/java/com/example/AppTest.java), çekirdek iş mantığı sınıfları (ör. DijkstraSolver, GraphBuilderService, RouteStrategy implementasyonları) için test kanıtı yok.
+3. Veri kaynağı olarak sabit JSON kullanımı (src/main/resources/data.json) uygulamanın gerçek zamanlı veri veya veritabanı entegrasyonundan yoksun olduğunu gösteriyor; bu durum veri güncelleme ve ölçeklenebilirlik gereksinimleri için risk oluşturabilir.
 
 ## Code Review
 
 ### Öncelik Özeti
 | ID | Öncelik | Kategori | Teknik Borç | Kanıt | Etki | Önerilen Aksiyon |
 |---|---:|---|---|---|---|---|
-| ARC-01 | P2 | Mimari | Tek paket (com.example) altında yoğun sınıf kümesi | src/main/java/com/example/ (çok sayıda sınıf: App.java, RotaHesaplama.java, DijkstraSolver.java, RouteStrategy*.java vb.) | Sınıflar arasında yüksek bağlılık ve zayıf modülerlik; bakım zorlaşır | Paketi mantıksal alt paketlere ayırın (controller, service, model, strategy, repository). Küçük adımlarla yeniden paketleme yapın. |
-| STA-01 | P2 | Statik Analiz | Test kapsamı sınırlı — yalnızca AppTest.java | src/test/java/com/example/AppTest.java (tek test dosyası listesi) | Regresyon yakalanma şansı düşük; kalite güvencesi zayıf | Unit test sayısını artırın; RotaHesaplama, DijkstraSolver ve RouteStrategy sınıfları için izole testler ekleyin. |
-| ARC-02 | P3 | Mimari | Hem statik frontend dosyaları hem controller sınıfları var — UI/servis sınırı belirsiz | src/main/resources/static/index.html ve src/main/java/com/example/HomeController.java, StopController.java | UI ve server tarafı sorumluluk çakışması; deployment/serving kararları karışık olabilir | UI ile backend ayrımını netleştirin. Eğer SPA ise backend API'lerini açıkça REST API olarak sunun; aksi halde server-side rendering yaklaşımını düzenleyin. |
-| STA-02 | P3 | Statik Analiz | Benzer/çakışan grafik-yapı kurma kodu gözüktüğü kanıtı | src/main/java/com/example/ManualGraph.java, GraphBuilderService.java, GraphBuilderExample.java | Kod tekrarı veya belirsiz sorumluluk — bakım maliyeti | Graph inşa mantığını tek bir sorumluluğa toplayın; örnek ve servis ayrımı yapılmışsa dokümante edin ve tekrar eden kodu soyutlayın. |
-| SEC-01 | P3 | Güvenlik | Uygulama verisi kaynak içinde sabitlenmiş (data.json) | src/main/resources/data.json | Hassas veri veya büyük veri setleri repo ile dağıtılabilir; güncelleme/deployment zorluğu | Sensitive bilgiler içeriyorsa repo dışında tutun; veri için versiyonlanmış ve erişimli bir veri kaynağı veya konfigürasyon yöntemi kullanın. |
-| TEC-01 | P3 | Teknoloji | Bağımlılık/çerçeve belirtilmemiş (pom.xml içerikleri sağlanmamış) — proje yapılandırması net değil | pom.xml (dosya mevcut; içerik sağlanmadı) | İnşa/çalıştırma adımları ve gerekli kütüphaneler bilinmiyor; geliştirici deneyimi olumsuz | pom.xml içeriğini paylaşın veya README ekleyin; proje derleme talimatlarını ve gerekli Maven/Java sürümünü belirtin. |
+| SEC-01 | P1 | Security | Yetkilendirme/kimlik doğrulama eksikliği | src/main/java/com/example/HomeController.java; src/main/java/com/example/StopController.java — depo içinde auth/security sınıfı bulunmuyor | Yetkisiz erişim riski; prod ortamda veri ve işlemler korunmayabilir | Authentication/authorization mekanizması ekleyin (ör. güvenlik filtresi, token doğrulama) ve controller girişlerini doğrulayın |
+| STA-02 | P2 | Static Analysis | Yetersiz test kapsamı | src/test/java/com/example/AppTest.java — tek test sınıfı bulunuyor; çekirdek sınıflar için test yok | Regresyon riski, refactor sırasında hata ihtimali | DijkstraSolver, GraphBuilderService, RouteStrategy implementasyonları için birim testleri ekleyin |
+| ARC-03 | P2 | Architecture | Sabit JSON veri kaynağı kullanımı | src/main/resources/data.json ve src/main/java/com/example/GraphBuilderService.java | Veri güncelleme, ölçeklenebilirlik ve entegrasyon sınırlamaları | Veri erişimini soyutlayacak bir repository arayüzü ekleyin; data.json için adaptör/loader oluşturun ve gerçek DB entegrasyonu için genişletin |
+| TEC-04 | P3 | Technology | Statik frontend dosyaları pipeline eksikliği | src/main/resources/static/index.html, bus.png, tram.png, ikon.png | Frontend asset optimizasyonu ve sürüm yönetimi eksik olabilir | Frontend build/asset pipeline veya basit minify/prod optimizasyonu ekleyin; asset yönetimini dökümante edin |
+| STA-05 | P3 | Static Analysis | İsimlendirmede dil karışıklığı (tutarlılık) | src/main/java/com/example/ içinde Arac.java, Yolcu.java, KentKart.java, KrediKarti.java vs. HomeController.java, StopController.java | Kod okunabilirliğinde ve ekip içi anlaşılırlıkta küçük sürtüşmeler | Kod tabanında naming konvansiyonu belirleyin (ör. tüm sınıf adları için İngilizce veya Türkçe tercih edin) ve dosya adlarını eşleştirin |
 
 ### Statik Analiz
-- [P2] STA-01: src/test/java/com/example/AppTest.java — Test var ancak tek dosya; RotaHesaplama, DijkstraSolver, RouteStrategy sınıfları için birim test yokluğu tespit edilebiliyor (test kapsamının yetersiz olduğuna işaret eder).
-- [P3] STA-02: src/main/java/com/example/ManualGraph.java ve src/main/java/com/example/GraphBuilderService.java, src/main/java/com/example/GraphBuilderExample.java — benzer sorumluluklar/örnek kod birikimi; kod tekrarı veya belirsiz sınırlar olabilir.
+- [P2] STA-02 — src/test/java/com/example/AppTest.java: Depoda yalnızca bir test sınıfı var; çekirdek mantığın (DijkstraSolver, GraphBuilderService, RouteStrategy'ler) otomatik testleri eksik.
+- [P3] STA-05 — src/main/java/com/example/: Sınıf isimlendirmelerinde Türkçe/İngilizce karışımı (ör. Arac.java, Yolcu.java vs HomeController.java) var; kod standardizasyonu eksik.
 
 ### Güvenlik
-- [P3] SEC-01: src/main/resources/data.json — uygulama verisinin repository içinde sabitlenmesi; eğer bu dosya hassas bilgi içeriyorsa risk oluşturabilir. (Dosya içeriği burada gösterilmedi; varlığı kanıtlanmıştır.)
+- [P1] SEC-01 — src/main/java/com/example/HomeController.java; src/main/java/com/example/StopController.java: Depoda kimlik doğrulama/yetkilendirme/ güvenlik sınıflarına dair dosya veya konfigürasyon kanıtı yok; erişim kontrolü mekanizması eksik görünmekte.
 
 ### Mimari
-- [P2] ARC-01: src/main/java/com/example/ içinde tüm sınıfların tek paket altında toplanması (App.java, HomeController.java, StopController.java, RotaHesaplama.java, DijkstraSolver.java, RouteStrategy*, BusRouteStrategy.java, TramRouteStrategy.java, TaxiRouteStrategy.java vb.) — sorumluluk ayrımı ve modülerlik zayıf.
-- [P3] ARC-02: Hem src/main/resources/static/index.html (ve resimler) hem HomeController/StopController sınıflarının bulunması — UI ve API sorumluluklarının ayrımı net değil.
+- [P2] ARC-03 — src/main/resources/data.json ve src/main/java/com/example/GraphBuilderService.java: Sabit JSON dosyası veri kaynağı olarak kullanılıyor; veri erişiminin soyutlanması ve dışsal veri kaynağı entegrasyonu için yapı eksik.
+- No evidence-backed technical debt found (diğer mimari alt-kategoriler için başka kanıt yok).
 
 ### Teknoloji
-- [P3] TEC-01: pom.xml proje kökünde bulunuyor ancak sağlanan kanıtlarda içerik (bağımlılıklar, build pluginleri, Java versiyonu) verilmedi — proje derleme/çalıştırma için eksik bilgi. (pom.xml var: proje kökünde)
+- [P3] TEC-04 — src/main/resources/static/*: Statik frontend dosyaları depo içinde mevcut; frontend build/asset pipeline veya paketleme kanıtı yok.
+- No evidence-backed technical debt found (ör. eksik pom.xml bağımlılık iddiası yapılamaz çünkü pom.xml içeriği sağlanmadı).
 
-(Not: Yukarıdaki tüm tespitler yalnızca repository dosya ağacı ve dosya adlarına dayanılarak yapılmıştır; dosya içerikleri sağlanmamıştır veya sınırlı şekilde sağlanmıştır.)
+Notlar / Kanıt Referansları
+- Projedeki ana giriş/organizasyon dosyaları: src/main/java/com/example/App.java, HomeController.java, StopController.java, GraphBuilderService.java, DijkstraSolver.java, çeşitli RouteStrategy sınıfları (ör. BusRouteStrategy.java, TramRouteStrategy.java, TaxiRouteStrategy.java).
+- Statik içerik ve veri: src/main/resources/static/index.html, bus.png, tram.png, ikon.png; src/main/resources/data.json.
+- Test kanıtı: src/test/java/com/example/AppTest.java.
+- Bağımlılıklar ve framework'ler pom.xml aracılığıyla tanımlanır ancak pom.xml içeriği sağlanmadığı için bağımlılık listesi raporda yer almamıştır.
 
 ---
 
 ## Depo İstatistikleri
 | Metrik | Değer |
 |---|---|
-| Toplam Dosya | 41 |
+| Toplam Dosya | 42 |
 | Toplam Dizin | 11 |
 | Oluşturulma | 2026-09-07 |
 | Kaynak | [YusuffBulbul/Izmit_sehir_ici_ulasim](https://github.com/YusuffBulbul/Izmit_sehir_ici_ulasim) |
